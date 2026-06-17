@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}学生管理 - 宿舍信息管理系统{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>学生管理</h1>
+    <a href="{{ url_for('student_add') }}" class="btn btn-primary">+ 添加新学生</a>
+</div>
+
+<!-- 搜索栏 -->
+<div class="panel">
+    <div class="panel-body">
+        <form class="search-bar" method="get">
+            <input type="text" name="q" placeholder="搜索学号 / 姓名 / 班级..."
+                   value="{{ query or '' }}">
+            <button type="submit" class="btn btn-primary">搜索</button>
+            {% if query %}
+            <a href="{{ url_for('student_list') }}" class="btn btn-warning">清除</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- 学生列表 -->
+<div class="panel">
+    <div class="panel-body">
+        {% if students %}
+        <table>
+            <thead>
+                <tr>
+                    <th>学号</th><th>姓名</th><th>性别</th><th>班级</th>
+                    <th>院系</th><th>辅导员</th><th>宿舍</th><th>电话</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in students %}
+                <tr>
+                    <td>{{ s.学号 }}</td>
+                    <td>{{ s.姓名 }}</td>
+                    <td>{{ s.性别 }}</td>
+                    <td>{{ s.班级 }}</td>
+                    <td>{{ s.院系 }}</td>
+                    <td>{{ s.辅导员 }}</td>
+                    <td>{{ s.宿舍楼 or '-' }} {{ s.宿舍号 or '' }}</td>
+                    <td>{{ s.电话 or '-' }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('student_edit', student_id=s.学号) }}" class="btn btn-sm btn-success">编辑</a>
+                        <form method="post" action="{{ url_for('student_delete', student_id=s.学号) }}"
+                              style="display:inline;" onsubmit="return confirmDelete('确定要删除学生「{{ s.姓名 }}」吗？')">
+                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            {% if query %}
+            没有找到匹配「{{ query }}」的学生
+            {% else %}
+            暂无学生数据，点击上方按钮添加
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

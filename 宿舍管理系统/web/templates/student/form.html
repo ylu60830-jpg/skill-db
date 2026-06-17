@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑学生' if student else '添加学生' }} - 宿舍信息管理系统{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>{{ '编辑学生' if student else '添加学生' }}</h1>
+    <a href="{{ url_for('student_list') }}" class="btn btn-warning">返回列表</a>
+</div>
+
+<div class="panel">
+    <div class="panel-body">
+        <form method="post" data-validate>
+            <!-- 学号 -->
+            <div class="form-group">
+                <label for="student_id">学号 <span style="color:red">*</span></label>
+                <div class="form-control">
+                    <input type="text" id="student_id" name="student_id" required
+                           value="{{ student.student_id if student else '' }}"
+                           maxlength="12" placeholder="如 2024001"
+                           {% if student %}readonly style="background:#f0f0f0"{% endif %}>
+                </div>
+            </div>
+
+            <!-- 姓名 -->
+            <div class="form-group">
+                <label for="student_name">姓名 <span style="color:red">*</span></label>
+                <div class="form-control">
+                    <input type="text" id="student_name" name="student_name" required
+                           value="{{ student.student_name if student else '' }}"
+                           maxlength="30" placeholder="请输入姓名">
+                </div>
+            </div>
+
+            <!-- 性别 -->
+            <div class="form-group radio-group">
+                <label>性别 <span style="color:red">*</span></label>
+                <div class="radio-options">
+                    <label class="radio-label">
+                        <input type="radio" name="gender" value="男" required
+                               {% if not student or student.gender == '男' %}checked{% endif %}> 男
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="gender" value="女"
+                               {% if student and student.gender == '女' %}checked{% endif %}> 女
+                    </label>
+                </div>
+            </div>
+
+            <!-- 班级 → 自动填辅导员 -->
+            <div class="form-group">
+                <label for="class_id">班级 <span style="color:red">*</span></label>
+                <div class="form-control">
+                    <select id="class_id" name="class_id" required>
+                        <option value="">-- 请选择班级 --</option>
+                        {% for c in classes %}
+                        <option value="{{ c.class_id }}"
+                                data-counselor-id="{{ c.counselor_id }}"
+                                {% if student and student.class_id == c.class_id %}selected{% endif %}>
+                            {{ c.class_name }}（{{ c.department }} / {{ c.grade }}级）
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">选择班级后将自动填入对应辅导员</div>
+                </div>
+            </div>
+
+            <!-- 辅导员 -->
+            <div class="form-group">
+                <label for="counselor_id">辅导员 <span style="color:red">*</span></label>
+                <div class="form-control">
+                    <select id="counselor_id" name="counselor_id" required>
+                        <option value="">-- 请选择辅导员 --</option>
+                        {% for co in counselors %}
+                        <option value="{{ co.counselor_id }}"
+                                {% if student and student.counselor_id == co.counselor_id %}selected{% endif %}>
+                            {{ co.counselor_name }} (ID: {{ co.counselor_id }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- 电话 -->
+            <div class="form-group">
+                <label for="phone">电话</label>
+                <div class="form-control">
+                    <input type="text" id="phone" name="phone"
+                           value="{{ student.phone if student else '' }}"
+                           maxlength="15" placeholder="如 13800138000">
+                </div>
+            </div>
+
+            <!-- 宿舍 -->
+            <div class="form-group">
+                <label for="dorm_id">宿舍</label>
+                <div class="form-control">
+                    <select id="dorm_id" name="dorm_id">
+                        <option value="">-- 暂不分配宿舍 --</option>
+                        {% for d in dorms %}
+                        <option value="{{ d.dorm_id }}"
+                                {% if student and student.dorm_id == d.dorm_id %}selected{% endif %}>
+                            {{ d.building_name }} {{ d.dorm_no }}（空余 {{ d.available }} / {{ d.bed_count }}）
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">仅显示有空位的宿舍</div>
+                </div>
+            </div>
+
+            <!-- 入学日期 -->
+            <div class="form-group">
+                <label for="enrollment_date">入学日期</label>
+                <div class="form-control">
+                    <input type="date" id="enrollment_date" name="enrollment_date"
+                           value="{{ student.enrollment_date if student else '' }}">
+                </div>
+            </div>
+
+            <!-- 提交 -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    {{ '保存修改' if student else '确认添加' }}
+                </button>
+                <a href="{{ url_for('student_list') }}" class="btn btn-warning">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

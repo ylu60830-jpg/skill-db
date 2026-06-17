@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}宿舍管理 - 宿舍信息管理系统{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>宿舍管理</h1>
+    <a href="{{ url_for('dorm_add') }}" class="btn btn-primary">+ 添加新宿舍</a>
+</div>
+
+<div class="panel">
+    <div class="panel-body">
+        {% if dorms %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>楼栋</th><th>宿舍号</th><th>楼层</th>
+                    <th>床位数</th><th>已入住</th><th>空余</th><th>类型</th><th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in dorms %}
+                <tr>
+                    <td>{{ d.dorm_id }}</td>
+                    <td>{{ d.building_name }}</td>
+                    <td>{{ d.dorm_no }}</td>
+                    <td>{{ d.floor }}</td>
+                    <td>{{ d.bed_count }}</td>
+                    <td>{{ d.occupied }}</td>
+                    <td>{{ d.available }}</td>
+                    <td>{{ d.dorm_type }}</td>
+                    <td>
+                        {% if d.status == '已满' %}
+                        <span class="badge badge-full">已满</span>
+                        {% else %}
+                        <span class="badge badge-avail">有空位</span>
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        <a href="{{ url_for('dorm_edit', dorm_id=d.dorm_id) }}" class="btn btn-sm btn-success">编辑</a>
+                        <form method="post" action="{{ url_for('dorm_delete', dorm_id=d.dorm_id) }}"
+                              style="display:inline;" onsubmit="return confirmDelete('确定要删除「{{ d.building_name }} {{ d.dorm_no }}」吗？')">
+                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">暂无宿舍数据</div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
