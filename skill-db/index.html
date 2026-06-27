@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillDB — Claude Skill 浏览器</title>
+<style>
+/* ══════════════════════════════════════════════════
+   SkillDB — 暗色终端美学 · 日系克制
+   ══════════════════════════════════════════════════ */
+
+:root {
+  --bg: #0b0d14;
+  --surface: #141722;
+  --card: #1a1e2e;
+  --border: #252836;
+  --accent: #64ffda;
+  --accent-dim: #3d9e88;
+  --coral: #ff6b6b;
+  --gold: #ffd166;
+  --purple: #c3a0ff;
+  --text: #cdd6f4;
+  --text-dim: #8b8fa8;
+  --text-muted: #565a6e;
+  --domain: #64ffda;
+  --process: #c3a0ff;
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+  --radius: 6px;
+  --transition: 180ms ease;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+/* ═══ SIDEBAR ═══ */
+#sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  z-index: 10;
+}
+
+#sidebar-header {
+  padding: 20px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+#sidebar-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#sidebar-header h1 .dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+#sidebar-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+#type-filter {
+  display: flex;
+  gap: 4px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+#type-filter button {
+  flex: 1;
+  padding: 5px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+#type-filter button.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+#type-filter button:hover:not(.active) {
+  border-color: var(--text-dim);
+}
+
+#category-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+#category-tree::-webkit-scrollbar { width: 4px; }
+#category-tree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.cat-item { cursor: pointer; }
+.cat-item:hover > .cat-label { color: var(--text); }
+
+.cat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  font-size: 13px;
+  color: var(--text-dim);
+  transition: var(--transition);
+  position: relative;
+}
+
+.cat-label .arrow {
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+  transition: transform 150ms ease;
+}
+
+.cat-label .cat-name { flex: 1; }
+.cat-label .cat-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--card);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.cat-item.active > .cat-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cat-item.active > .cat-label::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.sub-list { overflow: hidden; }
+.sub-list.collapsed { max-height: 0; }
+
+.sub-item {
+  padding: 4px 18px 4px 36px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sub-item:hover { color: var(--text); }
+.sub-item.active { color: var(--accent); }
+.sub-item .sub-count {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ═══ MAIN CONTENT ═══ */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+#top-bar {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+}
+
+#search-wrap {
+  flex: 1;
+  position: relative;
+}
+
+#search-wrap::before {
+  content: '⌕';
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+#search {
+  width: 100%;
+  padding: 8px 14px 8px 34px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: var(--transition);
+}
+
+#search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.08);
+}
+
+#search::placeholder {
+  color: var(--text-muted);
+}
+
+#view-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+
+#view-toggle button {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+#view-toggle button.active {
+  background: var(--card);
+  color: var(--accent);
+}
+
+#stats-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-right: 8px;
+}
+
+#stats-bar strong { color: var(--accent); }
+
+/* Skill area */
+#skill-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+#skill-area::-webkit-scrollbar { width: 6px; }
+#skill-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+#skill-area.list-view {
+  grid-template-columns: 1fr;
+  max-width: 900px;
+  gap: 4px;
+}
+
+/* Card */
+.skill-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-card:hover {
+  border-color: var(--accent-dim);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.skill-card:active {
+  transform: translateY(0);
+}
+
+.skill-card .type-badge {
+  position: absolute;
+  top: 0; right: 0;
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 0 0 0 6px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.skill-card .type-badge.domain {
+  background: rgba(100,255,218,0.12);
+  color: var(--domain);
+}
+
+.skill-card .type-badge.process {
+  background: rgba(195,160,255,0.12);
+  color: var(--process);
+}
+
+.skill-card .skill-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Cascadia Code', 'Consolas', 'Fira Code', monospace;
+}
+
+.skill-card .skill-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+}
+
+.skill-card .skill-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.skill-card .skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.skill-card .tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: rgba(100,255,218,0.06);
+  color: var(--accent-dim);
+  border-radius: 3px;
+}
+
+/* List view */
+.skill-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.skill-row:hover {
+  border-color: var(--accent-dim);
+  background: #1d2032;
+}
+
+.skill-row .skill-name {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.skill-row .skill-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-row .type-badge {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* Modal */
+#modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+}
+
+#modal-overlay.show { display: flex; }
+
+#modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: modalIn 200ms ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#modal h2 {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 20px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+#modal .modal-cat {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+#modal .modal-section {
+  margin-top: 14px;
+}
+
+#modal .modal-section h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+#modal .modal-section p, #modal .modal-section code {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+#modal .modal-section code {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  margin: 1px 2px;
+}
+
+#modal .modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#modal .tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(100,255,218,0.08);
+  color: var(--accent-dim);
+  border-radius: 4px;
+  border: 1px solid rgba(100,255,218,0.15);
+}
+
+#modal-close {
+  position: absolute;
+  top: 16px; right: 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+#modal-close:hover { color: var(--coral); }
+
+/* Empty / Error states */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 13px; line-height: 1.6; }
+
+/* Loading */
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 60px;
+  color: var(--text-muted);
+}
+
+.loading .spinner {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Keyboard shortcut hint */
+#kb-hint {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  font-size: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #sidebar { width: 200px; min-width: 200px; }
+  #skill-area { grid-template-columns: 1fr; padding: 12px; }
+  #top-bar { flex-wrap: wrap; padding: 10px 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <h1><span class="dot"></span>SkillDB</h1>
+    <div id="sidebar-meta">加载中...</div>
+  </div>
+  <div id="type-filter">
+    <button data-type="all" class="active">全部</button>
+    <button data-type="domain">工具</button>
+    <button data-type="process">流程</button>
+  </div>
+  <nav id="category-tree"></nav>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main id="main">
+  <div id="top-bar">
+    <div id="search-wrap">
+      <input type="text" id="search" placeholder="搜索 skill 名称、功能、标签..." autocomplete="off">
+    </div>
+    <div id="view-toggle">
+      <button id="view-cards" class="active" title="卡片视图">▦</button>
+      <button id="view-list" title="列表视图">☰</button>
+    </div>
+    <div id="stats-bar">
+      <span>共 <strong id="stat-total">0</strong> 个</span>
+      <span>显示 <strong id="stat-shown">0</strong> 个</span>
+    </div>
+  </div>
+  <div id="skill-area"></div>
+</main>
+
+<!-- ═══ MODAL ═══ -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal" onclick="event.stopPropagation()">
+    <button id="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<div id="kb-hint"><kbd>Esc</kbd> 关闭 · <kbd>/</kbd> 搜索</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   SkillDB — Application Logic
+   ══════════════════════════════════════════════════ */
+
+let INDEX = null;
+let state = {
+  view: 'cards',
+  typeFilter: 'all',
+  selectedCategory: null,
+  selectedSubcategory: null,
+  searchQuery: '',
+};
+
+// ── Load ────────────────────────────────────
+async function loadIndex() {
+  try {
+    const resp = await fetch('./skill-index.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    INDEX = await resp.json();
+    init();
+  } catch (e) {
+    document.getElementById('skill-area').innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <div class="icon">⚠</div>
+        <p>无法加载 skill-index.json</p>
+        <p style="font-size:12px;color:var(--text-muted);">请使用本地服务器打开：<br>
+        <code>python -m http.server 8765 -d skill-db</code><br>
+        然后访问 <code>http://localhost:8765</code></p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">${e.message}</p>
+      </div>`;
+  }
+}
+
+function init() {
+  document.getElementById('sidebar-meta').textContent =
+    `${INDEX.meta.total_skills} skills · ${INDEX.meta.categories_count} 大类`;
+
+  buildCategoryTree();
+  renderSkills();
+  bindEvents();
+}
+
+// ── Category Tree ───────────────────────────
+function buildCategoryTree() {
+  const tree = document.getElementById('category-tree');
+  tree.innerHTML = '';
+
+  // "全部" item
+  tree.innerHTML += `
+    <div class="cat-item active" data-cat="*">
+      <div class="cat-label"><span class="arrow"></span><span class="cat-name">全部 Skill</span><span class="cat-count">${INDEX.meta.total_skills}</span></div>
+    </div>`;
+
+  INDEX.categories.forEach((cat, ci) => {
+    const catSkills = cat.subcategories.reduce((s, sub) => s + sub.skills.length, 0);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cat-item';
+    wrapper.dataset.cat = cat.name;
+    wrapper.innerHTML = `
+      <div class="cat-label">
+        <span class="arrow">▸</span>
+        <span class="cat-name">${cat.name}</span>
+        <span class="cat-count">${catSkills}</span>
+      </div>`;
+
+    const subList = document.createElement('div');
+    subList.className = 'sub-list collapsed';
+
+    cat.subcategories.forEach(sub => {
+      const subDiv = document.createElement('div');
+      subDiv.className = 'sub-item';
+      subDiv.dataset.cat = cat.name;
+      subDiv.dataset.sub = sub.name;
+      subDiv.innerHTML = `${sub.name} <span class="sub-count">${sub.skills.length}</span>`;
+      subList.appendChild(subDiv);
+    });
+
+    wrapper.appendChild(subList);
+    tree.appendChild(wrapper);
+  });
+}
+
+// ── Render Skills ────────────────────────────
+function renderSkills() {
+  const area = document.getElementById('skill-area');
+  area.className = state.view === 'list' ? 'list-view' : '';
+
+  const filtered = filterSkills();
+  document.getElementById('stat-total').textContent = INDEX.meta.total_skills;
+  document.getElementById('stat-shown').textContent = filtered.length;
+
+  if (filtered.length === 0) {
+    area.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="icon">∅</div>
+        <p>没有匹配的 skill</p>
+        <p style="font-size:12px;color:var(--text-muted);">换个关键词试试</p>
+      </div>`;
+    return;
+  }
+
+  if (state.view === 'cards') {
+    area.innerHTML = filtered.map(s => cardHTML(s)).join('');
+  } else {
+    area.innerHTML = filtered.map(s => rowHTML(s)).join('');
+  }
+}
+
+function filterSkills() {
+  let skills = INDEX.flat_list;
+
+  // Type filter
+  if (state.typeFilter !== 'all') {
+    skills = skills.filter(s => s.type === state.typeFilter);
+  }
+
+  // Category filter
+  if (state.selectedCategory && state.selectedCategory !== '*') {
+    skills = skills.filter(s => s.category === state.selectedCategory);
+    if (state.selectedSubcategory) {
+      skills = skills.filter(s => s.subcategory === state.selectedSubcategory);
+    }
+  }
+
+  // Search
+  const q = state.searchQuery.toLowerCase().trim();
+  if (q) {
+    skills = skills.filter(s => {
+      const haystack = [
+        s.name, s.function_zh, s.function_en,
+        s.category, s.subcategory,
+        ...s.tags,
+      ].join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }
+
+  return skills;
+}
+
+function cardHTML(s) {
+  const typeLabel = s.type === 'process' ? '流程' : '工具';
+  return `
+    <div class="skill-card" onclick="openModal('${esc(s.name)}')" data-name="${esc(s.name)}">
+      <span class="type-badge ${s.type}">${typeLabel}</span>
+      <div class="skill-name">${esc(s.name)}</div>
+      <div class="skill-sub">
+        <span>${esc(s.category)}</span><span>/</span><span>${esc(s.subcategory)}</span>
+      </div>
+      <div class="skill-desc">${esc(s.function_zh || s.function_en || s.description_short)}</div>
+      <div class="skill-tags">${s.tags.slice(0, 4).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+    </div>`;
+}
+
+function rowHTML(s) {
+  const typeLabel = s.type === 'process' ? '流程' : '工具';
+  return `
+    <div class="skill-row" onclick="openModal('${esc(s.name)}')" data-name="${esc(s.name)}">
+      <span class="skill-name">${esc(s.name)}</span>
+      <span class="skill-desc">${esc(s.function_zh || s.function_en || '')}</span>
+      <span class="type-badge ${s.type}">${typeLabel}</span>
+    </div>`;
+}
+
+// ── Modal ────────────────────────────────────
+function openModal(name) {
+  const s = INDEX.flat_list.find(x => x.name === name);
+  if (!s) return;
+
+  const typeLabel = s.type === 'process' ? '流程型 (Process)' : '工具型 (Domain)';
+  document.getElementById('modal-content').innerHTML = `
+    <h2>${esc(s.name)}</h2>
+    <div class="modal-cat">${esc(s.category)} / ${esc(s.subcategory)} · ${typeLabel}</div>
+
+    <div class="modal-section">
+      <h3>功能</h3>
+      <p>${esc(s.function_zh || '—')}</p>
+      ${s.function_en ? `<p style="font-size:12px;color:var(--text-muted);margin-top:4px;">${esc(s.function_en)}</p>` : ''}
+    </div>
+
+    <div class="modal-section">
+      <h3>路径</h3>
+      <code>${esc(s.path)}</code>
+    </div>
+
+    <div class="modal-section">
+      <h3>标签</h3>
+      <div class="modal-tags">${s.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+    </div>
+
+    <div class="modal-section" style="display:flex;gap:20px;font-size:12px;">
+      <span>📁 ${s.file_count} 文件</span>
+      <span>📎 ${s.has_references ? '含参考资料' : '单文件'}</span>
+      <span>📂 ${esc(s.dir_name)}</span>
+    </div>
+  `;
+
+  document.getElementById('modal-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// ── Events ───────────────────────────────────
+function bindEvents() {
+  // Search
+  document.getElementById('search').addEventListener('input', e => {
+    state.searchQuery = e.target.value;
+    renderSkills();
+  });
+
+  // View toggle
+  document.getElementById('view-cards').addEventListener('click', () => {
+    state.view = 'cards';
+    document.getElementById('view-cards').classList.add('active');
+    document.getElementById('view-list').classList.remove('active');
+    renderSkills();
+  });
+  document.getElementById('view-list').addEventListener('click', () => {
+    state.view = 'list';
+    document.getElementById('view-list').classList.add('active');
+    document.getElementById('view-cards').classList.remove('active');
+    renderSkills();
+  });
+
+  // Type filter
+  document.querySelectorAll('#type-filter button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#type-filter button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.typeFilter = btn.dataset.type;
+      renderSkills();
+    });
+  });
+
+  // Category tree
+  document.getElementById('category-tree').addEventListener('click', e => {
+    const catLabel = e.target.closest('.cat-label');
+    const subItem = e.target.closest('.sub-item');
+
+    if (subItem) {
+      // Select subcategory
+      document.querySelectorAll('.sub-item.active, .cat-item.active').forEach(el => el.classList.remove('active'));
+      subItem.classList.add('active');
+      const catItem = subItem.closest('.cat-item');
+      if (catItem) catItem.classList.add('active');
+      state.selectedCategory = subItem.dataset.cat;
+      state.selectedSubcategory = subItem.dataset.sub;
+      renderSkills();
+      return;
+    }
+
+    if (catLabel) {
+      const catItem = catLabel.closest('.cat-item');
+      const catName = catItem.dataset.cat;
+
+      // Toggle collapse
+      const subList = catItem.querySelector('.sub-list');
+      if (subList) {
+        subList.classList.toggle('collapsed');
+        const arrow = catLabel.querySelector('.arrow');
+        arrow.textContent = subList.classList.contains('collapsed') ? '▸' : '▾';
+      }
+
+      // Select category
+      document.querySelectorAll('.cat-item.active, .sub-item.active').forEach(el => el.classList.remove('active'));
+      catItem.classList.add('active');
+      state.selectedCategory = catName;
+      state.selectedSubcategory = null;
+      renderSkills();
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeModal({target: document.getElementById('modal-overlay')});
+    }
+    if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
+      e.preventDefault();
+      document.getElementById('search').focus();
+    }
+  });
+}
+
+// ── Utils ────────────────────────────────────
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Boot ─────────────────────────────────────
+loadIndex();
+</script>
+</body>
+</html>

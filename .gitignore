@@ -1,6 +1,13 @@
 # Claude Code 本地配置（含API密钥，禁止提交）
-.claude/settings.local.json
-.claude/settings.json
+.claude/
+
+# 私人文件（角色记忆/项目记录/用户数据）
+memory-backup/
+skill-backups/
+*.skill
+
+# 学校作业
+宿舍管理系统/
 
 # 办公文档临时文件
 ~$*.doc*
@@ -11,5 +18,14 @@
 __pycache__/
 *.pyc
 
+# SkillDB 生成文件（每个人自己扫）
+skill-db/skill-index.json
+
 # LibreOffice 转换锁文件
 .~lock.*
+
+# Node.js
+node_modules/
+
+# Superpowers skills
+.superpowers/
